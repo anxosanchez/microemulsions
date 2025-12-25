@@ -10,18 +10,21 @@ LANGS = {
         "title": "🧪 Industrial Microemulsion Manufacturing Suite",
         "designer": "🛠️ Formulation Designer",
         "selection": "Component Selection",
+        "aqueous": "Aqueous Phase",
         "resin": "Target Resin",
         "solvent": "Base Solvent",
         "cosolvent": "Leveling Cosolvent",
         "surfactant": "Primary Surfactant",
         "cosurfactant": "Cosurfactant (Alcohol)",
-        "concs": "Concentrations (%)",
-        "p_sol": "% Solvent Phase",
-        "p_cos": "% Cosolvent",
-        "p_sur": "% Surfactant",
-        "p_alc": "% Cosurfactant",
-        "wat_err": "Too much organic phase! Water must be at least 5%.",
-        "wat_info": "💧 Aqueous Phase: ",
+        "concs": "Phase Distribution (w/w %)",
+        "p_wat": "💧 ADJUST AQUEOUS PHASE (Anchor)",
+        "p_sol": "Solvent Phase",
+        "p_cos": "Cosolvent Phase",
+        "p_sur": "Surfactant Phase",
+        "p_alc": "Cosurfactant Phase",
+        "wat_err": "Water must be at least 10% of the formulation.",
+        "wat_warn": "Adjusting organic phase ratio based on water budget.",
+        "wat_info": "💧 Current Aqueous Balance: ",
         "salinity": "Salinity (% NaCl in mix)",
         "tabs": ["📊 Lab Analysis", "🛡️ Regulatory & Safety", "🏭 Manufacturing"],
         "hsp_title": "Hansen Solubility Space (3D)",
@@ -84,18 +87,21 @@ LANGS = {
         "title": "🧪 Suite de Fabricación de Microemulsiones Industriales",
         "designer": "🛠️ Diseñador de Formulación",
         "selection": "Selección de Componentes",
+        "aqueous": "Fase Acuosa",
         "resin": "Resina Objetivo",
         "solvent": "Solvente Base",
         "cosolvent": "Cosolvente de Nivelación",
         "surfactant": "Tensioactivo Principal",
         "cosurfactant": "Cotensioactivo (Alcohol)",
-        "concs": "Concentraciones (%)",
-        "p_sol": "% Fase Solvente",
-        "p_cos": "% Cosolvente",
-        "p_sur": "% Tensioactivo",
-        "p_alc": "% Cotensioactivo",
-        "wat_err": "¡Demasiada fase orgánica! El agua debe ser al menos el 5%.",
-        "wat_info": "💧 Fase Acuosa: ",
+        "concs": "Distribución de Fases (% en peso)",
+        "p_wat": "💧 AJUSTAR FASE ACUOSA (Ancla)",
+        "p_sol": "Fase Solvente",
+        "p_cos": "Cosolvente",
+        "p_sur": "Tensioactivo",
+        "p_alc": "Cotensioactivo",
+        "wat_err": "El agua debe ser al menos el 10% de la formulación.",
+        "wat_warn": "Ajustando ratio orgánico según balance de agua.",
+        "wat_info": "💧 Balance Acuoso Actual: ",
         "salinity": "Salinidad (% NaCl en mezcla)",
         "tabs": ["📊 Análisis de Laboratorio", "🛡️ Seguridad y Normativa", "🏭 Fabricación"],
         "hsp_title": "Espacio de Solubilidad de Hansen (3D)",
@@ -158,18 +164,21 @@ LANGS = {
         "title": "🧪 Suite de Fabricación de Microemulsións Industriais",
         "designer": "🛠️ Deseñador de Formulación",
         "selection": "Selección de Compoñentes",
+        "aqueous": "Fase Acuosa",
         "resin": "Resina Obxectivo",
         "solvent": "Solvente Base",
         "cosolvent": "Cosolvente de Nivelación",
         "surfactant": "Tansioactivo Principal",
         "cosurfactant": "Cotansioactivo (Alcohol)",
-        "concs": "Concentracións (%)",
-        "p_sol": "% Fase Solvente",
-        "p_cos": "% Cosolvente",
-        "p_sur": "% Tansioactivo",
-        "p_alc": "% Cotansioactivo",
-        "wat_err": "Demasiada fase orgánica! A auga debe ser polo menos o 5%.",
-        "wat_info": "💧 Fase Acuosa: ",
+        "concs": "Distribución de Fases (% en peso)",
+        "p_wat": "💧 AXUSTAR FASE ACUOSA (Ancla)",
+        "p_sol": "Fase Solvente",
+        "p_cos": "Cosolvente",
+        "p_sur": "Tansioactivo",
+        "p_alc": "Cotansioactivo",
+        "wat_err": "A auga debe ser polo menos o 10% da formulación.",
+        "wat_warn": "Axustando ratio orgánico segundo o balance de auga.",
+        "wat_info": "💧 Balance Acuoso Actual: ",
         "salinity": "Salinidade (% NaCl na mestura)",
         "tabs": ["📊 Análise de Laboratorio", "🛡️ Seguridade e Normativa", "🏭 Fabricación"],
         "hsp_title": "Espazo de Solubilidade de Hansen (3D)",
@@ -232,6 +241,11 @@ LANGS = {
 
 DATA_FULL = {
     # We use English keys for internally matching but localized display where needed
+    "Aqueous": {
+        "Pure Water": {"hsp": [15.5, 16.0, 42.1], "rho": 997, "fp": 1000, "price": 0.01},
+        "Distilled Water": {"hsp": [15.5, 16.0, 42.1], "rho": 998, "fp": 1000, "price": 0.05},
+        "Process Water": {"hsp": [15.5, 16.0, 42.1], "rho": 1005, "fp": 1000, "price": 0.005},
+    },
     "Solvents": {
         "Methyl Sunflowerate": {"hsp": [16.2, 3.2, 3.8], "rho": 880, "eacn": 1.5, "fp": 170, "price": 1.65, "ghs": []},
         "Methyl Soyate": {"hsp": [16.1, 3.1, 3.7], "rho": 885, "eacn": 1.4, "fp": 175, "price": 1.60, "ghs": []},
@@ -328,7 +342,22 @@ with st.sidebar:
     st.markdown("---")
     st.header(L["designer"])
     
-    with st.expander(L["selection"], expanded=True):
+    # MASTER AQUEOUS SLIDER (Total formulated mass anchor)
+    st.markdown("---")
+    p_wat = st.slider(
+        label=f"{L['p_wat']} (w/w %)", 
+        min_value=10.0, 
+        max_value=90.0, 
+        value=50.0, 
+        step=0.5, 
+        key="master_aqueous_anchor"
+    )
+    budget = 100.0 - p_wat
+    st.markdown(f"**🔓 Remaining Organic Phase: {budget:.1f}% w/w**")
+    st.markdown("---")
+    
+    with st.expander(L["selection"], expanded=False):
+        wat_k = st.selectbox(L["aqueous"], list(DATA_FULL["Aqueous"].keys()))
         res_k = st.selectbox(L["resin"], list(DATA_FULL["Resins"].keys()))
         sol_k = st.selectbox(L["solvent"], list(DATA_FULL["Solvents"].keys()))
         cos_k = st.selectbox(L["cosolvent"], list(DATA_FULL["Cosolvents"].keys()))
@@ -336,18 +365,29 @@ with st.sidebar:
         alc_k = st.selectbox(L["cosurfactant"], list(DATA_FULL["Cosurfactants"].keys()))
     
     with st.expander(L["concs"], expanded=True):
-        p_sol = st.slider(L["p_sol"], 5, 60, 25)
-        p_cos = st.slider(L["p_cos"], 0, 15, 5)
-        p_sur = st.slider(L["p_sur"], 5, 30, 12)
-        p_alc = st.slider(L["p_alc"], 2, 20, 8)
-        p_wat = 100 - p_sol - p_cos - p_sur - p_alc
-        if p_wat < 5: st.error(L["wat_err"]); p_wat = 5
-        st.info(f"{L['wat_info']} {p_wat}%")
+        st.caption("Distribute the organic budget:")
+        r_sol = st.slider(L["p_sol"], 0.0, 100.0, 40.0, key="v4_r_sol")
+        r_cos = st.slider(L["p_cos"], 0.0, 100.0, 10.0, key="v4_r_cos")
+        r_sur = st.slider(L["p_sur"], 0.0, 100.0, 30.0, key="v4_r_sur")
+        r_alc = st.slider(L["p_alc"], 0.0, 100.0, 20.0, key="v4_r_alc")
+        
+        # Normalize organic phase proportionally
+        total_r = r_sol + r_cos + r_sur + r_alc
+        if total_r == 0: total_r = 1.0
+        
+        p_sol = (r_sol / total_r) * budget
+        p_cos = (r_cos / total_r) * budget
+        p_sur = (r_sur / total_r) * budget
+        p_alc = (r_alc / total_r) * budget
+        
+        st.success(f"**Total Mass: 100.0% (w/w)**")
+        st.markdown(f"**Aqueous ({p_wat:.1f}%) + Organic ({budget:.1f}%)**")
+        
         salinity = st.number_input(L["salinity"], 0.0, 10.0, 0.5, step=0.1)
 
 # Logic Prep
+W = DATA_FULL["Aqueous"][wat_k]
 S, C, Sf, A, R = DATA_FULL["Solvents"][sol_k], DATA_FULL["Cosolvents"][cos_k], DATA_FULL["Surfactants"][sur_k], DATA_FULL["Cosurfactants"][alc_k], DATA_FULL["Resins"][res_k]
-W = {"hsp": [15.5, 16.0, 42.1], "rho": 997, "fp": 1000, "price": 0.01}
 comps = [S, C, Sf, A, W]
 ws = np.array([p_sol, p_cos, p_sur, p_alc, p_wat]) / 100
 rho_mix, fp_mix = get_physical_properties(ws, np.array([c["rho"] for c in comps]), np.array([c.get("fp", 200) for c in comps]))
