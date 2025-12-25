@@ -411,18 +411,74 @@ with t1:
         y_s = R['r0'] * np.sin(u) * np.sin(v) + R['hsp'][1]
         z_s = R['r0'] * np.cos(v) + R['hsp'][2]
         fig = go.Figure()
+        
+        # Resin Sphere Surface
         fig.add_trace(go.Surface(x=x_s, y=y_s, z=z_s, opacity=0.4, showscale=False, colorscale=[[0, '#38bdf8'], [1, '#38bdf8']],
             contours=dict(x=dict(show=True, color="white", width=1), y=dict(show=True, color="white", width=1), z=dict(show=True, color="white", width=1)),
-            name=f"{L['target']}: {res_k}"))
-        fig.add_trace(go.Scatter3d(x=[h_mix[0]], y=[h_mix[1]], z=[h_mix[2]], mode='markers', marker=dict(size=12, color='#ef4444', symbol='diamond', line=dict(color='white', width=2)), name=L["current"]))
-        fig.add_trace(go.Scatter3d(x=[R['hsp'][0]], y=[R['hsp'][1]], z=[R['hsp'][2]], mode='markers', marker=dict(size=6, color='#fbbf24'), name=f"{res_k} {L['center']}"))
+            name=f"{L['target']}: {res_k}", showlegend=True))
+
+        # Add all solvents and cosolvents as comparison points
+        sol_inside_x, sol_inside_y, sol_inside_z, sol_inside_n = [], [], [], []
+        sol_outside_x, sol_outside_y, sol_outside_z, sol_outside_n = [], [], [], []
+        
+        for category in ["Solvents", "Cosolvents"]:
+            for name, component in DATA_FULL[category].items():
+                if name == "None": continue
+                h = component["hsp"]
+                # Calculate RED for this specific component
+                ra = np.sqrt(4*(h[0]-R['hsp'][0])**2 + (h[1]-R['hsp'][1])**2 + (h[2]-R['hsp'][2])**2)
+                red_val = ra / R['r0']
+                
+                if red_val <= 1.0:
+                    sol_inside_x.append(h[0]); sol_inside_y.append(h[1]); sol_inside_z.append(h[2]); sol_inside_n.append(name)
+                else:
+                    sol_outside_x.append(h[0]); sol_outside_y.append(h[1]); sol_outside_z.append(h[2]); sol_outside_n.append(name)
+
+        # Plot In-Sphere Solvents (Red)
+        fig.add_trace(go.Scatter3d(x=sol_inside_x, y=sol_inside_y, z=sol_inside_z, 
+                                   mode='markers+text',
+                                   marker=dict(size=5, color='#ef4444', opacity=0.9),
+                                   text=sol_inside_n, textposition="top center",
+                                   textfont=dict(size=10, color="white"),
+                                   hoverinfo='text', name="Soluble DB Components"))
+        
+        # Plot Out-Sphere Solvents (Blue)
+        fig.add_trace(go.Scatter3d(x=sol_outside_x, y=sol_outside_y, z=sol_outside_z, 
+                                   mode='markers+text',
+                                   marker=dict(size=5, color='#3b82f6', opacity=0.7),
+                                   text=sol_outside_n, textposition="top center",
+                                   textfont=dict(size=10, color="#94a3b8"),
+                                   hoverinfo='text', name="Insoluble DB Components"))
+
+        # Current Formulation Point
+        fig.add_trace(go.Scatter3d(x=[h_mix[0]], y=[h_mix[1]], z=[h_mix[2]], 
+                                   mode='markers+text', 
+                                   marker=dict(size=14, color='#fbbf24', symbol='diamond', line=dict(color='white', width=2)), 
+                                   text=[L["current"]], textposition="bottom center",
+                                   textfont=dict(size=12, color="white"),
+                                   hoverinfo='text', name=L["current"]))
+        
+        # Resin Center
+        fig.add_trace(go.Scatter3d(x=[R['hsp'][0]], y=[R['hsp'][1]], z=[R['hsp'][2]], mode='markers', 
+                                   marker=dict(size=8, color='white'), 
+                                   text=[f"{res_k} {L['center']}"], hoverinfo='text',
+                                   name=f"{res_k} {L['center']}"))
+        
         ctr, rv = R['hsp'], R['r0'] + 5
-        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', scene=dict(
-            xaxis=dict(title='δD', range=[ctr[0]-rv, ctr[0]+rv], gridcolor="#475569"),
-            yaxis=dict(title='δP', range=[ctr[1]-rv, ctr[1]+rv], gridcolor="#475569"),
-            zaxis=dict(title='δH', range=[ctr[2]-rv, ctr[2]+rv], gridcolor="#475569"),
-            aspectmode='cube', bgcolor="#0f172a"
-        ), margin=dict(l=0, r=0, b=0, t=0), legend=dict(x=0.02, y=0.98, font=dict(color="white"), bgcolor="rgba(15, 23, 42, 0.8)"))
+        fig.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)', 
+            plot_bgcolor='rgba(0,0,0,0)',
+            hovermode='closest',
+            hoverlabel=dict(bgcolor="#1e293b", font_size=14, font_family="Inter"),
+            scene=dict(
+                xaxis=dict(title='δD', range=[ctr[0]-rv, ctr[0]+rv], gridcolor="#475569"),
+                yaxis=dict(title='δP', range=[ctr[1]-rv, ctr[1]+rv], gridcolor="#475569"),
+                zaxis=dict(title='δH', range=[ctr[2]-rv, ctr[2]+rv], gridcolor="#475569"),
+                aspectmode='cube', bgcolor="#0f172a"
+            ), 
+            margin=dict(l=0, r=0, b=0, t=0), 
+            legend=dict(x=0.02, y=0.98, font=dict(color="white"), bgcolor="rgba(15, 23, 42, 0.8)")
+        )
         st.plotly_chart(fig, use_container_width=True)
     with col_r:
         st.subheader(L["perf"])
