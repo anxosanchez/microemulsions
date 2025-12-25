@@ -1,0 +1,350 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from scipy.optimize import minimize
+
+# --- DATA & MODELS ---
+
+# Component Data
+COMPONENTS = {
+    "Solvents": {
+        "Methyl Sunflowerate": {"D": 16.2, "P": 3.2, "H": 3.8, "rho": 880, "EACN": 1.5, "Flash": 170, "Price": 2.5},
+        "Methyl Soyate": {"D": 16.1, "P": 3.1, "H": 3.7, "rho": 885, "EACN": 1.4, "Flash": 175, "Price": 2.3},
+        "Methyl Palmitate": {"D": 16.3, "P": 2.7, "H": 3.4, "rho": 860, "EACN": 1.8, "Flash": 180, "Price": 3.0},
+        "DBE": {"D": 16.5, "P": 7.5, "H": 7.0, "rho": 1060, "EACN": -5.4, "Flash": 108, "Price": 1.8},
+    },
+    "Cosolvents": {
+        "None": {"D": 0, "P": 0, "H": 0, "rho": 0, "EACN": 0, "Flash": 0, "Price": 0},
+        "Propylene Carbonate": {"D": 20.0, "P": 18.0, "H": 4.1, "rho": 1200, "EACN": 0.1, "Flash": 132, "Price": 2.2},
+        "Glycerin": {"D": 17.4, "P": 12.1, "H": 29.3, "rho": 1260, "EACN": -10.0, "Flash": 160, "Price": 1.5},
+        "Butyl Diglycol": {"D": 16.0, "P": 7.0, "H": 10.6, "rho": 950, "EACN": -2.0, "Flash": 105, "Price": 2.8}
+    },
+    "Surfactants": {
+        "APG (Non-ionic)": {"HLB": 13.0, "Cc": 1.5, "D": 16.0, "P": 10.0, "H": 15.0, "rho": 1100, "Price": 4.5, "GHS": ["Irritant"]},
+        "SLES (Anionic)": {"HLB": 40.0, "Cc": -2.0, "D": 17.0, "P": 15.0, "H": 20.0, "rho": 1050, "Price": 3.5, "GHS": ["Irritant", "Ecotoxic"]}
+    },
+    "Cosurfactants": {
+        "Ethanol": {"HLB": 7.0, "D": 15.8, "P": 8.8, "H": 19.4, "rho": 789, "Flash": 13, "Price": 1.2, "GHS": ["Flammable"]},
+        "Butanol": {"HLB": 7.0, "D": 16.0, "P": 5.7, "H": 15.8, "rho": 810, "Flash": 35, "Price": 1.8, "GHS": ["Flammable", "Irritant"]},
+        "IPA": {"HLB": 7.0, "D": 15.8, "P": 6.1, "H": 16.4, "rho": 786, "Flash": 12, "Price": 1.5, "GHS": ["Flammable", "Irritant"]}
+    },
+    "Aqueous": {
+        "Water": {"D": 15.5, "P": 16.0, "H": 42.3, "rho": 997, "Flash": 1000, "Price": 0.01} # Flash high for water
+    }
+}
+
+RESINS = {
+    "Alquidic": {"D": 18.5, "P": 9.2, "H": 4.9, "R": 8.0},
+    "Nitrocellulose": {"D": 15.4, "P": 14.7, "H": 8.8, "R": 11.5},
+    "Polyurethane": {"D": 17.4, "P": 6.2, "H": 8.5, "R": 10.0},
+    "PVC": {"D": 18.2, "P": 7.5, "H": 8.3, "R": 3.5},
+    "Acrylic": {"D": 18.0, "P": 10.5, "H": 5.2, "R": 9.0}
+}
+
+def calculate_mixture_hsp(components_list, fractions):
+    d_mix = sum(c['D'] * f for c, f in zip(components_list, fractions))
+    p_mix = sum(c['P'] * f for c, f in zip(components_list, fractions))
+    h_mix = sum(c['H'] * f for c, f in zip(components_list, fractions))
+    return d_mix, p_mix, h_mix
+
+def calculate_ra_red(target_hsp, mixture_hsp):
+    ra = np.sqrt(4 * (target_hsp['D'] - mixture_hsp[0])**2 + (target_hsp['P'] - mixture_hsp[1])**2 + (target_hsp['H'] - mixture_hsp[2])**2)
+    red = ra / target_hsp['R']
+    return ra, red
+
+def calculate_hld(surfactant, oil_eacn, salinity_pct):
+    # Simplified HLD Model
+    # HLD = ln(S) - k*EACN + Cc (Ionic)
+    # HLD = b*S - k*EACN + Cc (Non-ionic)
+    # k ~ 0.17
+    k = 0.17
+    if "Anionic" in surfactant['name']:
+        s_val = salinity_pct if salinity_pct > 0.01 else 0.01 # Avoid log(0)
+        hld = np.log(s_val) - k * oil_eacn + surfactant['Cc']
+    else: # Non-ionic
+        b = 0.13
+        hld = b * salinity_pct - k * oil_eacn + surfactant['Cc']
+    return hld
+
+def calculate_hlb_mix(surfactants, fractions):
+    return sum(s['HLB'] * f for s, f in zip(surfactants, fractions))
+
+def calculate_physical_properties(components, fractions, o_w_ratio):
+    # 1. Density (Additive Volumes)
+    # rho_mix = 1 / sum(wi / rhoi) where wi is weight fraction
+    # For simplicity with volume fractions: rho_mix = sum(phi_i * rho_i)
+    rho_mix = sum(c['rho'] * f for c, f in zip(components, fractions))
+    
+    # 2. Viscosity (Krieger-Dougherty)
+    # Applied to the microemulsion as a dispersion of droplets
+    # eta = eta_continuous * (1 - phi/phi_m)^(-[eta]phi_m)
+    # phi_m ~ 0.64 (random close packing), [eta] ~ 2.5 (spheres)
+    phi_internal = min(o_w_ratio, 1 - o_w_ratio) # simplified droplet phase fraction
+    eta_water = 0.89 # cP
+    phi_m = 0.64
+    intrinsic_eta = 2.5
+    try:
+        mu_mix = eta_water * (1 - phi_internal / phi_m)**(-intrinsic_eta * phi_m)
+    except:
+        mu_mix = eta_water * 5 # Fallback
+    
+    # 3. Surface Tension (Weinaug-Katz)
+    # Simplified version: sigma = (sum(Pi * xi))**4
+    # Standard values for parachor P range from 50-400.
+    # We'll use a simplified linear blend of typical sigma values as an approximation.
+    gamma_mix = sum(28 * f for f in fractions) 
+    
+    # 4. Flash Point (Wickey-Chittenden)
+    # 1/FP_mix = sum(xi / FP_i) or similar empirical
+    # Simplified: -log10(Flash_mix) = sum(xi * -log10(Flash_i))
+    logs = []
+    weights = []
+    for i, c in enumerate(components):
+        if c.get('Flash', 0) > 0 and fractions[i] > 0:
+            logs.append(np.log10(c['Flash']))
+            weights.append(fractions[i])
+    
+    if weights:
+        fp_mix = 10**sum(l * w / sum(weights) for l, w in zip(logs, weights))
+    else:
+        fp_mix = 200
+    
+    return rho_mix, mu_mix, gamma_mix, fp_mix
+
+# --- UI SETUP ---
+st.set_page_config(page_title="Advanced Microemulsion Designer", layout="wide")
+
+# Custom CSS for Industrial Dashboard look
+st.markdown("""
+<style>
+    .main {
+        background-color: #f5f7f9;
+        font-family: 'Inter', sans-serif;
+    }
+    .stMetric {
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stTable {
+        background-color: #ffffff;
+        border-radius: 10px;
+    }
+    h1, h2, h3 {
+        color: #1e3a8a;
+    }
+    .ghs-box {
+        padding: 10px;
+        border-radius: 5px;
+        margin: 5px;
+        text-align: center;
+        font-weight: bold;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.sidebar.markdown("# 🧪 Formulator Inputs")
+
+# Solvent Selection
+st.sidebar.subheader("Phase A: Organic")
+solvent_name = st.sidebar.selectbox("Main Solvent", list(COMPONENTS["Solvents"].keys()))
+cosolvent_name = st.sidebar.selectbox("Cosolvent (Optional)", list(COMPONENTS["Cosolvents"].keys()))
+
+# Surfactant Selection
+st.sidebar.subheader("Phase B: Surfactants")
+surf_name = st.sidebar.selectbox("Primary Surfactant", list(COMPONENTS["Surfactants"].keys()))
+cosurf_name = st.sidebar.selectbox("Cosurfactant", list(COMPONENTS["Cosurfactants"].keys()))
+
+# Aqueous Phase
+st.sidebar.subheader("Phase C: Aqueous")
+salinity = st.sidebar.slider("Salinity (NaCl %)", 0.0, 15.0, 1.0)
+
+# Composition
+st.sidebar.subheader("Composition ratios (%)")
+c_oil = st.sidebar.slider("Solvent Phase %", 5, 90, 30)
+c_surf = st.sidebar.slider("Surfactant System %", 1, 50, 15)
+c_water = 100 - c_oil - c_surf
+
+if c_water < 0:
+    st.sidebar.error("Sum of Oil and Surfactant cannot exceed 100%")
+    c_water = 0
+else:
+    st.sidebar.info(f"Aqueous Phase: {c_water:.1f}%")
+
+# Internal Ratios
+r_cosolvent = st.sidebar.slider("Cosolvent in Oil % (of Oil)", 0, 100, 0)
+r_cosurf = st.sidebar.slider("Cosurfactant in Surf % (of Surf)", 0, 100, 20)
+
+# Resin Target
+st.sidebar.subheader("🎯 Resin Target")
+resin_name = st.sidebar.selectbox("Select Target Resin", list(RESINS.keys()))
+
+# --- CALCULATION LOGIC ---
+
+f_oil_total = c_oil / 100
+f_surf_total = c_surf / 100
+f_water = c_water / 100
+
+f_solv = f_oil_total * (1 - r_cosolvent / 100)
+f_cosolv = f_oil_total * (r_cosolvent / 100)
+f_surf = f_surf_total * (1 - r_cosurf / 100)
+f_cosurf = f_surf_total * (r_cosurf / 100)
+
+comp_objects = [
+    COMPONENTS["Solvents"][solvent_name],
+    COMPONENTS["Cosolvents"][cosolvent_name],
+    COMPONENTS["Surfactants"][surf_name],
+    COMPONENTS["Cosurfactants"][cosurf_name],
+    COMPONENTS["Aqueous"]["Water"]
+]
+fractions = [f_solv, f_cosolv, f_surf, f_cosurf, f_water]
+
+# 2. Results
+d_m, p_m, h_m = calculate_mixture_hsp(comp_objects, fractions)
+ra, red = calculate_ra_red(RESINS[resin_name], (d_m, p_m, h_m))
+
+# HLD Calculation
+oil_phase_sum = f_solv + f_cosolv
+if oil_phase_sum > 0:
+    weighted_eacn = (f_solv * comp_objects[0]['EACN'] + f_cosolv * comp_objects[1]['EACN']) / oil_phase_sum
+else:
+    weighted_eacn = 0
+
+surf_obj = comp_objects[2].copy()
+surf_obj['name'] = surf_name
+hld = calculate_hld(surf_obj, weighted_eacn, salinity)
+
+# HLB Calculation
+if f_surf_total > 0:
+    hlb_mix = (f_surf * comp_objects[2]['HLB'] + f_cosurf * comp_objects[3]['HLB']) / f_surf_total
+else:
+    hlb_mix = 0
+
+rho, mu, gamma, fp = calculate_physical_properties(comp_objects, fractions, f_oil_total)
+
+# --- MAIN DASHBOARD ---
+
+st.title("🧪 Advanced Microemulsion Designer")
+st.markdown("### Industrial Formulation & Stability Dashboard")
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.subheader("Hansen Solubility Space")
+    res = RESINS[resin_name]
+    u, v = np.mgrid[0:2*np.pi:30j, 0:np.pi:15j]
+    x_s = res['R'] * np.cos(u) * np.sin(v) + res['D']
+    y_s = res['R'] * np.sin(u) * np.sin(v) + res['P']
+    z_s = res['R'] * np.cos(v) + res['H']
+    
+    fig = go.Figure()
+    fig.add_trace(go.Surface(x=x_s, y=y_s, z=z_s, opacity=0.15, colorscale='viridis', showscale=False, name=f"Resin: {resin_name}"))
+    fig.add_trace(go.Scatter3d(x=[d_m], y=[p_m], z=[h_m], mode='markers', marker=dict(size=12, color='red', symbol='diamond'), name="Current Mixture"))
+    fig.add_trace(go.Scatter3d(x=[res['D']], y=[res['P']], z=[res['H']], mode='markers', marker=dict(size=6, color='blue'), name=f"{resin_name} Center"))
+
+    fig.update_layout(
+        scene=dict(
+            xaxis=dict(title='δD (Dispersion)', backgroundcolor="rgb(230, 230,230)"),
+            yaxis=dict(title='δP (Polar)', backgroundcolor="rgb(230, 230,230)"),
+            zaxis=dict(title='δH (Hydrogen)', backgroundcolor="rgb(230, 230,230)"),
+        ),
+        margin=dict(l=0, r=0, b=0, t=0),
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+with col2:
+    st.subheader("Stability & Compatibility")
+    
+    st.metric("RED (Relative Energy Difference)", f"{red:.3f}")
+    if red < 1:
+        st.success("✅ COMPATIBLE (RED < 1)")
+    else:
+        st.error("❌ INCOMPATIBLE (RED > 1)")
+        
+    st.metric("HLD", f"{hld:.2f}")
+    if abs(hld) < 0.5:
+        st.success("✅ OPTIMUM (HLD ≈ 0)")
+    elif hld < -0.5:
+        st.info("💧 Type I (O/W)")
+    else:
+        st.info("🛢️ Type II (W/O)")
+
+    st.metric("Mixed HLB", f"{hlb_mix:.1f}")
+
+# Technical Data Sheet
+st.markdown("---")
+st.subheader("📄 Technical Data Sheet (TDS)")
+results_data = {
+    "Property": ["Density (ρ)", "Viscosity (η)", "Surface Tension (σ)", "Flash Point (TFP)", "Global HLB", "Weighted EACN"],
+    "Value": [f"{rho:.1f} kg/m³", f"{mu:.2f} cP", f"{gamma:.1f} mN/m", f"{fp:.1f} °C", f"{hlb_mix:.1f}", f"{weighted_eacn:.2f}"],
+    "Model Used": ["Additive Volumes", "Krieger-Dougherty", "Weinaug-Katz", "Wickey-Chittenden", "Weighted Average", "Volume Weighted"]
+}
+st.table(pd.DataFrame(results_data))
+
+# Safety Section
+st.subheader("⚠️ Safety & GHS Classification")
+all_ghs = set()
+for i, f in enumerate(fractions):
+    if f > 0.05:
+        ghs = comp_objects[i].get("GHS", [])
+        for g in ghs:
+            all_ghs.add(g)
+
+if all_ghs:
+    ghs_cols = st.columns(len(all_ghs))
+    for i, g in enumerate(all_ghs):
+        color = "#ef4444" if g in ["Flammable", "Ecotoxic"] else "#f59e0b"
+        ghs_cols[i].markdown(f'<div class="ghs-box" style="background-color: {color}; color: white;">{g.upper()}</div>', unsafe_allow_html=True)
+else:
+    st.info("No major GHS hazards detected for current composition (>5%).")
+
+# Reference Data Section
+with st.expander("📚 Reference Data Appendix"):
+    st.write("Current component properties used in calculations:")
+    ref_rows = []
+    for cat, items in COMPONENTS.items():
+        for name, props in items.items():
+            ref_rows.append({"Category": cat, "Name": name, **props})
+    st.dataframe(pd.DataFrame(ref_rows).drop(columns=['GHS', 'Price'], errors='ignore'))
+
+# Optimization Button
+st.markdown("---")
+if st.button("🚀 Auto-Optimize Formulation"):
+    with st.spinner("Finding the Sweet Spot (HLD≈0, RED<1)..."):
+        def objective(x):
+            o_p, s_p, sal, r_cs = x
+            w_p = 100 - o_p - s_p
+            if w_p < 5: return 1e6
+            
+            f_s_o = (o_p / 100) * (1 - r_cosolvent / 100)
+            f_cs_o = (o_p / 100) * (r_cosolvent / 100)
+            f_surf_o = (s_p / 100) * (1 - r_cs / 100)
+            f_cosurf_o = (s_p / 100) * (r_cs / 100)
+            f_w_o = w_p / 100
+            
+            d, p, h = calculate_mixture_hsp(comp_objects, [f_s_o, f_cs_o, f_surf_o, f_cosurf_o, f_w_o])
+            _, cur_red = calculate_ra_red(RESINS[resin_name], (d, p, h))
+            
+            eacn = weighted_eacn
+            cur_hld = calculate_hld(surf_obj, eacn, sal)
+            
+            # Penalize HLD offset, RED > 1, and surfactant amount (cost)
+            return 20 * cur_hld**2 + 50 * max(0, cur_red - 0.9)**2 + 0.1 * s_p
+
+        res_opt = minimize(objective, [c_oil, c_surf, salinity, r_cosurf], bounds=[(10, 70), (5, 30), (0, 15), (0, 100)])
+        
+        if res_opt.success:
+            st.success("Optimization Complete!")
+            st.write(f"**Target Values for {resin_name}:**")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Recommended Oil %", f"{res_opt.x[0]:.1f}%")
+            c2.metric("Recommended Surf %", f"{res_opt.x[1]:.1f}%")
+            c3.metric("Optimum Salinity", f"{res_opt.x[2]:.2f}%")
+            c4.metric("Cosurf Ratio", f"{res_opt.x[3]:.1f}%")
+            st.info("💡 Adjust the sliders to these values to achieve the 'Sweet Spot'.")
+        else:
+            st.error("Optimization failed. Try starting from different initial values.")
+
