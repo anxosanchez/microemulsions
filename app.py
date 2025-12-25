@@ -22,9 +22,11 @@ LANGS = {
         "p_cos": "Cosolvent Phase",
         "p_sur": "Surfactant Phase",
         "p_alc": "Cosurfactant Phase",
-        "wat_err": "Water must be at least 10% of the formulation.",
-        "wat_warn": "Adjusting organic phase ratio based on water budget.",
         "wat_info": "💧 Current Aqueous Balance: ",
+        "summary_org": "% Organic phase",
+        "summary_wat": "% Water phase",
+        "summary_sur": "% Surfactants",
+        "total_mass_db": "📊 Total Mass Dashboard",
         "salinity": "Salinity (% NaCl in mix)",
         "tabs": ["📊 Lab Analysis", "🛡️ Regulatory & Safety", "🏭 Manufacturing"],
         "hsp_title": "Hansen Solubility Space (3D)",
@@ -40,7 +42,9 @@ LANGS = {
         "stability": "Stability",
         "solubility": "Solubility",
         "optimal": "Optimal",
+        "stable": "Stable",
         "unstable": "Unstable",
+        "hlb_label": "HLB Value",
         "high": "High",
         "medium": "Medium",
         "low": "Low",
@@ -51,6 +55,8 @@ LANGS = {
         "opt_wait": "Calculating optimal ratios...",
         "opt_succ": "Optimized! Set Oil: ",
         "opt_err": "Could not converge. Try different baseline.",
+        "red_help": "Relative Energy Difference. RED < 1: Soluble (Inside sphere). RED > 1: Insoluble (Outside sphere).",
+        "hld_help": "Hydrophilic-Lipophilic Difference. Balances surfactant-oil-water affinity. Stability range: -0.5 to +0.5.",
         "reg_title": "Regulatory Compliance & GHS",
         "h_phrases": "⚠️ Hazard Statements (H-Phrases)",
         "p_phrases": "🛡️ Precautionary Statements (P-Phrases)",
@@ -99,9 +105,11 @@ LANGS = {
         "p_cos": "Cosolvente",
         "p_sur": "Tensioactivo",
         "p_alc": "Cotensioactivo",
-        "wat_err": "El agua debe ser al menos el 10% de la formulación.",
-        "wat_warn": "Ajustando ratio orgánico según balance de agua.",
         "wat_info": "💧 Balance Acuoso Actual: ",
+        "summary_org": "% de fase orgánica",
+        "summary_wat": "% fase de agua",
+        "summary_sur": "% de tensioactivos",
+        "total_mass_db": "📊 Panel de Masa Total",
         "salinity": "Salinidad (% NaCl en mezcla)",
         "tabs": ["📊 Análisis de Laboratorio", "🛡️ Seguridad y Normativa", "🏭 Fabricación"],
         "hsp_title": "Espacio de Solubilidad de Hansen (3D)",
@@ -117,7 +125,9 @@ LANGS = {
         "stability": "Estabilidad",
         "solubility": "Solubilidad",
         "optimal": "Óptimo",
+        "stable": "Estable",
         "unstable": "Inestable",
+        "hlb_label": "HLB",
         "high": "Alta",
         "medium": "Media",
         "low": "Baja",
@@ -128,6 +138,8 @@ LANGS = {
         "opt_wait": "Calculando proporciones óptimas...",
         "opt_succ": "¡Optimizado! Solvente: ",
         "opt_err": "No convergió. Pruebe otro punto de inicio.",
+        "red_help": "Diferencia de Energía Relativa. RED < 1: Soluble (Dentro de la esfera). RED > 1: Insoluble (Fuera).",
+        "hld_help": "Diferencia Hidrófila-Lipófila. Equilibra la afinidad del tensioactivo. Rango estable: -0.5 a +0.5.",
         "reg_title": "Cumplimiento Normativo y GHS",
         "h_phrases": "⚠️ Indicaciones de Peligro (Frases H)",
         "p_phrases": "🛡️ Consejos de Prudencia (Frases P)",
@@ -176,9 +188,11 @@ LANGS = {
         "p_cos": "Cosolvente",
         "p_sur": "Tansioactivo",
         "p_alc": "Cotansioactivo",
-        "wat_err": "A auga debe ser polo menos o 10% da formulación.",
-        "wat_warn": "Axustando ratio orgánico segundo o balance de auga.",
         "wat_info": "💧 Balance Acuoso Actual: ",
+        "summary_org": "% de fase orgánica",
+        "summary_wat": "% fase de auga",
+        "summary_sur": "% de tansioactivos",
+        "total_mass_db": "📊 Panel de Masa Total",
         "salinity": "Salinidade (% NaCl na mestura)",
         "tabs": ["📊 Análise de Laboratorio", "🛡️ Seguridade e Normativa", "🏭 Fabricación"],
         "hsp_title": "Espazo de Solubilidade de Hansen (3D)",
@@ -194,7 +208,9 @@ LANGS = {
         "stability": "Estabilidade",
         "solubility": "Solubilidade",
         "optimal": "Óptimo",
+        "stable": "Estable",
         "unstable": "Inestable",
+        "hlb_label": "HLB",
         "high": "Alta",
         "medium": "Media",
         "low": "Baixa",
@@ -205,6 +221,8 @@ LANGS = {
         "opt_wait": "Calculando proporcións óptimas...",
         "opt_succ": "Optimizado! Solvent: ",
         "opt_err": "Non converxeu. Probe outro punto de inicio.",
+        "red_help": "Diferenza de Enerxía Relativa. RED < 1: Soluble (Dentro da esfera). RED > 1: Insoluble (Fóra).",
+        "hld_help": "Diferenza Hidrófila-Lipófila. Equilibra a afinidade do tansioactivo. Rango estable: -0.5 a +0.5.",
         "reg_title": "Cumprimento Normativo e GHS",
         "h_phrases": "### ⚠️ Indicacións de Perigo (Frases H)",
         "p_phrases": "### 🛡️ Consellos de Prudencia (Frases P)",
@@ -324,8 +342,9 @@ st.set_page_config(page_title="MicroSaaS Pro", layout="wide", page_icon="🧪")
 st.markdown("""
 <style>
     .stApp { background-color: #0f172a; color: #f1f5f9; }
-    .stMetric { background-color: #1e293b !important; padding: 20px !important; border-radius: 12px; border: 1px solid #334155; }
-    [data-testid="stMetricValue"] { color: #38bdf8 !important; }
+    .stMetric { background-color: #1e293b !important; padding: 10px !important; border-radius: 8px; border: 1px solid #334155; }
+    [data-testid="stMetricValue"] { color: #38bdf8 !important; font-size: 1.1rem !important; font-weight: 700 !important; }
+    [data-testid="stMetricLabel"] { font-size: 0.7rem !important; color: #94a3b8 !important; }
     .stTabs [data-baseweb="tab-list"] { background-color: #0f172a; }
     .stTabs [aria-selected="true"] { color: #38bdf8 !important; border-bottom-color: #38bdf8 !important; }
     [data-testid="stSidebar"] { background-color: #1e293b; border-right: 1px solid #334155; }
@@ -342,7 +361,7 @@ with st.sidebar:
     st.markdown("---")
     st.header(L["designer"])
     
-    # MASTER AQUEOUS SLIDER (Total formulated mass anchor)
+    # --- MASTER FORMULATION ANCHORS ---
     st.markdown("---")
     p_wat = st.slider(
         label=f"{L['p_wat']} (w/w %)", 
@@ -354,34 +373,54 @@ with st.sidebar:
     )
     budget = 100.0 - p_wat
     st.markdown(f"**🔓 Remaining Organic Phase: {budget:.1f}% w/w**")
+    
+    # Promoted Resin Selection
+    res_k = st.selectbox(L["resin"], list(DATA_FULL["Resins"].keys()))
     st.markdown("---")
     
-    with st.expander(L["selection"], expanded=False):
+    with st.expander(L["selection"], expanded=True):
         wat_k = st.selectbox(L["aqueous"], list(DATA_FULL["Aqueous"].keys()))
-        res_k = st.selectbox(L["resin"], list(DATA_FULL["Resins"].keys()))
         sol_k = st.selectbox(L["solvent"], list(DATA_FULL["Solvents"].keys()))
         cos_k = st.selectbox(L["cosolvent"], list(DATA_FULL["Cosolvents"].keys()))
         sur_k = st.selectbox(L["surfactant"], list(DATA_FULL["Surfactants"].keys()))
         alc_k = st.selectbox(L["cosurfactant"], list(DATA_FULL["Cosurfactants"].keys()))
     
     with st.expander(L["concs"], expanded=True):
-        st.caption("Distribute the organic budget:")
-        r_sol = st.slider(L["p_sol"], 0.0, 100.0, 40.0, key="v4_r_sol")
-        r_cos = st.slider(L["p_cos"], 0.0, 100.0, 10.0, key="v4_r_cos")
-        r_sur = st.slider(L["p_sur"], 0.0, 100.0, 30.0, key="v4_r_sur")
-        r_alc = st.slider(L["p_alc"], 0.0, 100.0, 20.0, key="v4_r_alc")
+        st.caption("Sequential Mass Allocation (w/w %):")
         
-        # Normalize organic phase proportionally
-        total_r = r_sol + r_cos + r_sur + r_alc
-        if total_r == 0: total_r = 1.0
+        # Sequential limits logic with session_state safety clamping
+        # 1. Surfactant (0-20%)
+        max_sur = min(20.0, max(0.0, 100.0 - p_wat))
+        def_sur = min(st.session_state.get("v7_sur", 10.0), max_sur)
+        p_sur = st.slider(L["p_sur"], 0.0, max_sur, def_sur, step=0.1, key="v7_sur")
         
-        p_sol = (r_sol / total_r) * budget
-        p_cos = (r_cos / total_r) * budget
-        p_sur = (r_sur / total_r) * budget
-        p_alc = (r_alc / total_r) * budget
+        # 2. Cosurfactant (Alcohol) (0-20%)
+        max_alc = min(20.0, max(0.0, 100.0 - p_wat - p_sur))
+        def_alc = min(st.session_state.get("v7_alc", 5.0), max_alc)
+        p_alc = st.slider(L["p_alc"], 0.0, max_alc, def_alc, step=0.1, key="v7_alc")
         
-        st.success(f"**Total Mass: 100.0% (w/w)**")
-        st.markdown(f"**Aqueous ({p_wat:.1f}%) + Organic ({budget:.1f}%)**")
+        # 3. Solvent (Max = 100 - wat - sur - alc)
+        max_sol = max(0.0, 100.0 - p_wat - p_sur - p_alc)
+        def_sol = min(st.session_state.get("v7_sol", 15.0), max_sol)
+        p_sol = st.slider(L["p_sol"], 0.0, max_sol, def_sol, step=0.1, key="v7_sol")
+        
+        # 4. Cosolvent (Last, starts at 0)
+        max_cos = max(0.0, 100.0 - p_wat - p_sur - p_alc - p_sol)
+        p_cos = st.slider(L["p_cos"], 0.0, max_cos, 0.0, step=0.1, key="v7_cos")
+        
+        current_total = p_wat + p_sur + p_alc + p_sol + p_cos
+        if current_total < 99.9:
+            st.warning(f"⚠️ Formulation is incomplete ({current_total:.1f}%). Adjust sliders to reach 100%.")
+        elif current_total > 100.1:
+            st.error(f"🚨 Mass Overload ({current_total:.1f}%). Please reduce components.")
+
+        # --- TOTAL MASS DASHBOARD ---
+        st.markdown("---")
+        st.markdown(f"### {L['total_mass_db']}")
+        c1, c2, c3 = st.columns(3)
+        c1.metric(L["summary_wat"], f"{p_wat:.1f}%")
+        c2.metric(L["summary_org"], f"{p_sol + p_cos:.1f}%")
+        c3.metric(L["summary_sur"], f"{p_sur + p_alc:.1f}%")
         
         salinity = st.number_input(L["salinity"], 0.0, 10.0, 0.5, step=0.1)
 
@@ -483,8 +522,22 @@ with t1:
     with col_r:
         st.subheader(L["perf"])
         m1, m2 = st.columns(2)
-        m1.metric(L["red"], f"{red:.2f}", delta="-0.05" if red < 1 else "+0.05", delta_color="inverse")
-        m2.metric(L["hld"], f"{hld:.2f}", delta=L["optimal"] if abs(hld) < 0.5 else L["unstable"])
+        m1.metric(
+            L["red"], 
+            f"{red:.2f}", 
+            delta="-0.05" if red < 1 else "+0.05", 
+            delta_color="inverse",
+            help=L["red_help"]
+        )
+        # HLD Metric with Stable/Unstable status and HLB in tooltip
+        st_state = L["stable"] if abs(hld) < 0.5 else L["unstable"]
+        m2.metric(
+            L["hld"], 
+            f"{hld:.2f}", 
+            delta=st_state, 
+            delta_color="normal" if abs(hld) < 0.5 else "inverse",
+            help=f"{L['hld_help']} | {L['hlb_label']}: {Sf['hlb']:.1f}"
+        )
         st.markdown(f"### {L['phys']}")
         tds_dict = {L["density"]: f"{rho_mix:.1f} kg/m³", L["fp"]: f"{fp_mix:.1f} °C",
                     L["stability"]: f"✅ {L['high']}" if abs(hld) < 0.5 else f"⚠️ {L['medium']}" if abs(hld) < 1.0 else f"❌ {L['low']}",
@@ -577,15 +630,26 @@ with t3:
         st.metric(L["total_cost"], f"€{cost:.2f}")
 
     st.markdown(f"### {L['weighing']}")
-    target_s = total_kg * (salinity/100)
-    w_b = target_s / (bc/100)
-    w_w = (total_kg * (p_wat/100)) - w_b
-    if w_w < 0: st.error(L["brine_err"])
-    batch_df = pd.DataFrame({
+    target_s = total_kg * (salinity / 100)
+    w_b = target_s / (bc / 100)
+    w_w = (total_kg * (p_wat / 100)) - w_b
+    if w_w < 0:
+        st.error(L["brine_err"])
+    
+    # Reconstructed DataFrame to ensure clean syntax
+    batch_data = {
         L["comp"]: [sol_k, cos_k, sur_k, alc_k, L["brine_stock"], L["pure_water"]],
-        L["weight"]: [total_kg*(p_sol/100), total_kg*(p_cos/100), total_kg*(p_sur/100), total_kg*(p_alc/100), w_b, w_w],
-        L["step"]: [1, 2, 3, 4, 5, 5]
-    })
+        L["weight"]: [
+            total_kg * (p_sol / 100), 
+            total_kg * (p_cos / 100), 
+            total_kg * (p_sur / 100), 
+            total_kg * (p_alc / 100), 
+            w_b, 
+            w_w
+        ],
+        L["step"]: [1, 2, 3, 4, 5, 5],
+    }
+    batch_df = pd.DataFrame(batch_data)
     st.table(batch_df)
     st.success(L["tip"])
     st.markdown("---")
