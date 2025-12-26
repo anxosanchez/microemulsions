@@ -87,7 +87,8 @@ LANGS = {
         "origin": "Origin",
         "code": "Code",
         "statement": "Statement",
-        "precaution": "Precaution"
+        "precaution": "Precaution",
+        "budget": "Remaining Organic Phase"
     },
     "Español": {
         "title": "🧪 Suite de Fabricación de Microemulsiones Industriales",
@@ -170,7 +171,8 @@ LANGS = {
         "origin": "Origen",
         "code": "Código",
         "statement": "Indicación",
-        "precaution": "Precaución"
+        "precaution": "Precaución",
+        "budget": "Fase Orgánica Restante"
     },
     "Galego": {
         "title": "🧪 Suite de Fabricación de Microemulsións Industriais",
@@ -219,13 +221,13 @@ LANGS = {
         "poor": "Pobre",
         "opt_btn": "🚀 Optimizador: Minimizar RED e HLD",
         "opt_wait": "Calculando proporcións óptimas...",
-        "opt_succ": "Optimizado! Solvent: ",
+        "opt_succ": "Optimizado! Solvente: ",
         "opt_err": "Non converxeu. Probe outro punto de inicio.",
         "red_help": "Diferenza de Enerxía Relativa. RED < 1: Soluble (Dentro da esfera). RED > 1: Insoluble (Fóra).",
         "hld_help": "Diferenza Hidrófila-Lipófila. Equilibra a afinidade do tansioactivo. Rango estable: -0.5 a +0.5.",
         "reg_title": "Cumprimento Normativo e GHS",
-        "h_phrases": "### ⚠️ Indicacións de Perigo (Frases H)",
-        "p_phrases": "### 🛡️ Consellos de Prudencia (Frases P)",
+        "h_phrases": "⚠️ Indicacións de Perigo (Frases H)",
+        "p_phrases": "🛡️ Consellos de Prudencia (Frases P)",
         "flam_title": "🔥 Clasificación de Inflamabilidade CLP/ECHA",
         "calc_fp": "Punto de Inflamación calculado",
         "clp2": "🚨 Categoría CLP 2: Moi Inflamable",
@@ -253,7 +255,8 @@ LANGS = {
         "origin": "Orixe",
         "code": "Código",
         "statement": "Indicación",
-        "precaution": "Precaución"
+        "precaution": "Precaución",
+        "budget": "Fase Orgánica Restante"
     }
 }
 
@@ -342,9 +345,9 @@ st.set_page_config(page_title="MicroSaaS Pro", layout="wide", page_icon="🧪")
 st.markdown("""
 <style>
     .stApp { background-color: #0f172a; color: #f1f5f9; }
-    .stMetric { background-color: #1e293b !important; padding: 10px !important; border-radius: 8px; border: 1px solid #334155; }
-    [data-testid="stMetricValue"] { color: #38bdf8 !important; font-size: 1.1rem !important; font-weight: 700 !important; }
-    [data-testid="stMetricLabel"] { font-size: 0.7rem !important; color: #94a3b8 !important; }
+    .stMetric { background-color: #1e293b !important; padding: 6px 10px !important; border-radius: 8px; border: 1px solid #334155; }
+    [data-testid="stMetricValue"] { color: #38bdf8 !important; font-size: 1.0rem !important; font-weight: 700 !important; }
+    [data-testid="stMetricLabel"] { font-size: 0.65rem !important; color: #94a3b8 !important; text-transform: uppercase; letter-spacing: 0.05em; }
     .stTabs [data-baseweb="tab-list"] { background-color: #0f172a; }
     .stTabs [aria-selected="true"] { color: #38bdf8 !important; border-bottom-color: #38bdf8 !important; }
     [data-testid="stSidebar"] { background-color: #1e293b; border-right: 1px solid #334155; }
@@ -372,7 +375,7 @@ with st.sidebar:
         key="master_aqueous_anchor"
     )
     budget = 100.0 - p_wat
-    st.markdown(f"**🔓 Remaining Organic Phase: {budget:.1f}% w/w**")
+    st.markdown(f"**🔓 {L['budget']}: {budget:.1f}% w/w**")
     
     # Promoted Resin Selection
     res_k = st.selectbox(L["resin"], list(DATA_FULL["Resins"].keys()))
@@ -518,7 +521,7 @@ with t1:
             margin=dict(l=0, r=0, b=0, t=0), 
             legend=dict(x=0.02, y=0.98, font=dict(color="white"), bgcolor="rgba(15, 23, 42, 0.8)")
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     with col_r:
         st.subheader(L["perf"])
         m1, m2 = st.columns(2)
